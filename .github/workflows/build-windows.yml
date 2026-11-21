@@ -1,0 +1,43 @@
+name: build-windows-exe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install -e .
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install pyinstaller
+
+      - name: Compilar
+        run: pyinstaller --noconfirm --clean noai_gui.spec
+
+      - name: Verificar salida
+        run: |
+          if (!(Test-Path "dist\NoAI-Watermark\NoAI-Watermark.exe")) { throw "El exe no se generó" }
+
+      - name: Empaquetar
+        run: |
+          $sz = "C:\Program Files\7-Zip\7z.exe"
+          if (Test-Path $sz) { & $sz a -mx=9 NoAI-Watermark-windows-x64.7z ".\dist\NoAI-Watermark\*" }
+          else { 7z a -mx=9 NoAI-Watermark-windows-x64.7z ".\dist\NoAI-Watermark\*" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NoAI-Watermark-windows-x64
+          path: NoAI-Watermark-windows-x64.7z
+          compression-level: 0
+          retention-days: 30
